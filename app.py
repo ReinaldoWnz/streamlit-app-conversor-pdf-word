@@ -1,6 +1,5 @@
 import streamlit as st
-import pdfplumber
-from docx import Document
+import pypandoc
 from io import BytesIO
 
 st.title("Conversor PDF para Word 📄➡️📝")
@@ -9,17 +8,17 @@ uploaded_file = st.file_uploader("Envie seu PDF", type="pdf")
 
 if uploaded_file is not None:
     if st.button("Converter para Word"):
-        doc = Document()
-        with pdfplumber.open(uploaded_file) as pdf:
-            for page in pdf.pages:
-                text = page.extract_text()
-                if text:
-                    doc.add_paragraph(text)
-        
-        # Salvar em memória
-        buffer = BytesIO()
-        doc.save(buffer)
-        buffer.seek(0)
+        # Salvar o PDF temporariamente
+        with open("temp.pdf", "wb") as f:
+            f.write(uploaded_file.read())
+
+        # Converter PDF para DOCX
+        output_file = "convertido.docx"
+        pypandoc.convert_file("temp.pdf", "docx", outputfile=output_file)
+
+        # Ler o arquivo convertido em memória
+        with open(output_file, "rb") as f:
+            buffer = BytesIO(f.read())
 
         st.success("Conversão concluída!")
         st.download_button(
