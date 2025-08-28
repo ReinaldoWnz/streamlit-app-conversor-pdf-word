@@ -1,34 +1,29 @@
 import streamlit as st
-import pypandoc
+from pdf2docx import Converter
 from io import BytesIO
-import os
 
-st.title("Conversor PDF para Word 📄➡️📝")
-
-# Garante que o Pandoc esteja disponível
-try:
-    pypandoc.get_pandoc_path()
-except OSError:
-    st.write("📥 Baixando o Pandoc...")
-    pypandoc.download_pandoc()
+st.title("Conversor PDF para Word 📄➡️📝 (com formatação)")
 
 uploaded_file = st.file_uploader("Envie seu PDF", type="pdf")
 
 if uploaded_file is not None:
     if st.button("Converter para Word"):
-        # Salvar PDF temporário
-        with open("temp.pdf", "wb") as f:
+        # Salvar temporariamente
+        input_pdf = "temp.pdf"
+        with open(input_pdf, "wb") as f:
             f.write(uploaded_file.read())
 
-        # Converter PDF para DOCX
-        output_file = "convertido.docx"
-        pypandoc.convert_file("temp.pdf", "docx", outputfile=output_file)
+        # Converter com pdf2docx
+        output_docx = "convertido.docx"
+        cv = Converter(input_pdf)
+        cv.convert(output_docx, start=0, end=None)  # full document
+        cv.close()
 
-        # Ler convertido em memória
-        with open(output_file, "rb") as f:
+        # Ler em memória
+        with open(output_docx, "rb") as f:
             buffer = BytesIO(f.read())
 
-        st.success("Conversão concluída!")
+        st.success("Conversão concluída com formatação mantida!")
         st.download_button(
             label="Baixar Word",
             data=buffer,
