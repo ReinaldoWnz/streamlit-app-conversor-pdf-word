@@ -1,3 +1,2 @@
 streamlit
-pypandoc
-pandoc
+pdf2docx
