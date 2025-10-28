@@ -5,8 +5,14 @@ import os
 import traceback
 import pypandoc
 
+# Garantir que o Pandoc esteja disponível
+try:
+    pypandoc.get_pandoc_path()
+except OSError:
+    pypandoc.download_pandoc()
+
 st.title("Conversor PDF para Word 📄➡️📝 (com fallback automático)")
-st.write("Envie **um ou vários PDFs** — o app tentará manter a formatação, mas se falhar, converte o conteúdo bruto automaticamente.")
+st.write("Envie **um ou vários PDFs** — o app tenta manter a formatação e usa fallback automático se necessário.")
 
 uploaded_files = st.file_uploader("Envie seus PDFs", type="pdf", accept_multiple_files=True)
 
@@ -31,12 +37,12 @@ if uploaded_files:
                     cv.close()
                 except Exception as e1:
                     st.warning(f"⚠️ {pdf.name} falhou com pdf2docx, tentando método alternativo...")
-                    # --- SEGUNDA TENTATIVA: pypandoc (fallback) ---
+
+                    # --- FALLBACK: pypandoc ---
                     try:
-                        pypandoc.convert_text(
-                            open(input_pdf, 'rb').read(),
-                            'docx',
-                            format='pdf',
+                        pypandoc.convert_file(
+                            source_file=input_pdf,
+                            to='docx',
                             outputfile=output_docx,
                             extra_args=['--standalone']
                         )
