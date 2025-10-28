@@ -1,18 +1,13 @@
 import streamlit as st
 from pdf2docx import Converter
 from io import BytesIO
+from docx import Document
 import os
+import pdfplumber
 import traceback
-import pypandoc
 
-# Garantir que o Pandoc esteja disponível
-try:
-    pypandoc.get_pandoc_path()
-except OSError:
-    pypandoc.download_pandoc()
-
-st.title("Conversor PDF para Word 📄➡️📝 (com fallback automático)")
-st.write("Envie **um ou vários PDFs** — o app tenta manter a formatação e usa fallback automático se necessário.")
+st.title("Conversor PDF para Word 📄➡️📝 (com fallback inteligente)")
+st.write("Converte PDFs mantendo a formatação quando possível, e extrai o texto bruto quando necessário.")
 
 uploaded_files = st.file_uploader("Envie seus PDFs", type="pdf", accept_multiple_files=True)
 
@@ -30,29 +25,29 @@ if uploaded_files:
                 with open(input_pdf, "wb") as f:
                     f.write(pdf.read())
 
-                # --- PRIMEIRA TENTATIVA: pdf2docx ---
+                # 1️⃣ TENTATIVA PRINCIPAL: pdf2docx
                 try:
                     cv = Converter(input_pdf)
                     cv.convert(output_docx, start=0, end=None)
                     cv.close()
+
+                # 2️⃣ FALLBACK: pdfplumber -> texto bruto
                 except Exception as e1:
-                    st.warning(f"⚠️ {pdf.name} falhou com pdf2docx, tentando método alternativo...")
+                    st.warning(f"⚠️ {pdf.name} falhou com pdf2docx, tentando extrair texto...")
 
-                    # --- FALLBACK: pypandoc ---
-                    try:
-                        pypandoc.convert_file(
-                            source_file=input_pdf,
-                            to='docx',
-                            outputfile=output_docx,
-                            extra_args=['--standalone']
-                        )
-                    except Exception as e2:
-                        raise Exception(f"pdf2docx e fallback falharam: {str(e2)}") from e2
+                    doc = Document()
+                    with pdfplumber.open(input_pdf) as p:
+                        for page in p.pages:
+                            text = page.extract_text()
+                            if text:
+                                doc.add_paragraph(text)
+                                doc.add_page_break()
 
-                # Ler resultado em memória
+                    doc.save(output_docx)
+
+                # Leitura do DOCX em memória
                 with open(output_docx, "rb") as f:
                     buffer = BytesIO(f.read())
-
                 resultados.append((nome_base, buffer))
 
             except Exception as e:
@@ -65,7 +60,7 @@ if uploaded_files:
                 if os.path.exists(output_docx):
                     os.remove(output_docx)
 
-        # Exibir resultados
+        # Resultados
         if resultados:
             st.success("Conversão concluída!")
             for nome_base, buffer in resultados:
