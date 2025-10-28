@@ -1,51 +1,46 @@
 import streamlit as st
-from pdf2docx import Converter
 from io import BytesIO
+from pdf2image import convert_from_path
 from docx import Document
+from docx.shared import Inches
 import os
-import pdfplumber
 import traceback
+from tempfile import NamedTemporaryFile
 
-st.title("Conversor PDF para Word 📄➡️📝 (com fallback inteligente)")
-st.write("Converte PDFs mantendo a formatação quando possível, e extrai o texto bruto quando necessário.")
+st.title("Conversor PDF ➜ Word (Layout 100% preservado)")
+st.write("Este modo insere cada página do PDF como imagem dentro do Word — mantendo toda a formatação original.")
 
-uploaded_files = st.file_uploader("Envie seus PDFs", type="pdf", accept_multiple_files=True)
+uploaded_files = st.file_uploader("Envie um ou vários PDFs", type="pdf", accept_multiple_files=True)
 
 if uploaded_files:
-    if st.button("Converter todos para Word"):
+    if st.button("Converter mantendo formatação"):
         resultados = []
         erros = []
 
         for pdf in uploaded_files:
             nome_base = os.path.splitext(pdf.name)[0]
-            input_pdf = f"{nome_base}.pdf"
-            output_docx = f"{nome_base}.docx"
-
             try:
-                with open(input_pdf, "wb") as f:
-                    f.write(pdf.read())
+                # Salvar PDF temporariamente
+                with NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_pdf:
+                    tmp_pdf.write(pdf.read())
+                    tmp_pdf_path = tmp_pdf.name
 
-                # 1️⃣ TENTATIVA PRINCIPAL: pdf2docx
-                try:
-                    cv = Converter(input_pdf)
-                    cv.convert(output_docx, start=0, end=None)
-                    cv.close()
+                # Converter páginas do PDF em imagens (300 DPI para boa qualidade)
+                pages = convert_from_path(tmp_pdf_path, dpi=300)
 
-                # 2️⃣ FALLBACK: pdfplumber -> texto bruto
-                except Exception as e1:
-                    st.warning(f"⚠️ {pdf.name} falhou com pdf2docx, tentando extrair texto...")
+                # Criar DOCX
+                doc = Document()
+                for i, page in enumerate(pages):
+                    img_temp = NamedTemporaryFile(delete=False, suffix=".jpg")
+                    page.save(img_temp.name, "JPEG")
+                    doc.add_picture(img_temp.name, width=Inches(6.5))  # largura padrão da página A4
+                    if i < len(pages) - 1:
+                        doc.add_page_break()
+                    os.remove(img_temp.name)
 
-                    doc = Document()
-                    with pdfplumber.open(input_pdf) as p:
-                        for page in p.pages:
-                            text = page.extract_text()
-                            if text:
-                                doc.add_paragraph(text)
-                                doc.add_page_break()
-
-                    doc.save(output_docx)
-
-                # Leitura do DOCX em memória
+                # Salvar resultado em memória
+                output_docx = f"{nome_base}.docx"
+                doc.save(output_docx)
                 with open(output_docx, "rb") as f:
                     buffer = BytesIO(f.read())
                 resultados.append((nome_base, buffer))
@@ -55,14 +50,14 @@ if uploaded_files:
                 traceback.print_exc()
 
             finally:
-                if os.path.exists(input_pdf):
-                    os.remove(input_pdf)
-                if os.path.exists(output_docx):
-                    os.remove(output_docx)
+                if os.path.exists(tmp_pdf_path):
+                    os.remove(tmp_pdf_path)
+                if os.path.exists(f"{nome_base}.docx"):
+                    os.remove(f"{nome_base}.docx")
 
         # Resultados
         if resultados:
-            st.success("Conversão concluída!")
+            st.success("Conversão concluída com formatação preservada!")
             for nome_base, buffer in resultados:
                 st.download_button(
                     label=f"📥 Baixar {nome_base}.docx",
