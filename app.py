@@ -3,11 +3,11 @@ from pdf2docx import Converter
 from io import BytesIO
 import os
 import traceback
+import pypandoc
 
-st.title("Conversor PDF para Word 📄➡️📝 (com formatação)")
-st.write("Envie **um ou vários PDFs** e baixe os arquivos Word convertidos separadamente.")
+st.title("Conversor PDF para Word 📄➡️📝 (com fallback automático)")
+st.write("Envie **um ou vários PDFs** — o app tentará manter a formatação, mas se falhar, converte o conteúdo bruto automaticamente.")
 
-# Permite múltiplos uploads
 uploaded_files = st.file_uploader("Envie seus PDFs", type="pdf", accept_multiple_files=True)
 
 if uploaded_files:
@@ -21,16 +21,29 @@ if uploaded_files:
             output_docx = f"{nome_base}.docx"
 
             try:
-                # Salvar PDF temporariamente
                 with open(input_pdf, "wb") as f:
                     f.write(pdf.read())
 
-                # Converter PDF -> DOCX
-                cv = Converter(input_pdf)
-                cv.convert(output_docx, start=0, end=None)
-                cv.close()
+                # --- PRIMEIRA TENTATIVA: pdf2docx ---
+                try:
+                    cv = Converter(input_pdf)
+                    cv.convert(output_docx, start=0, end=None)
+                    cv.close()
+                except Exception as e1:
+                    st.warning(f"⚠️ {pdf.name} falhou com pdf2docx, tentando método alternativo...")
+                    # --- SEGUNDA TENTATIVA: pypandoc (fallback) ---
+                    try:
+                        pypandoc.convert_text(
+                            open(input_pdf, 'rb').read(),
+                            'docx',
+                            format='pdf',
+                            outputfile=output_docx,
+                            extra_args=['--standalone']
+                        )
+                    except Exception as e2:
+                        raise Exception(f"pdf2docx e fallback falharam: {str(e2)}") from e2
 
-                # Ler DOCX em memória para download
+                # Ler resultado em memória
                 with open(output_docx, "rb") as f:
                     buffer = BytesIO(f.read())
 
@@ -38,16 +51,15 @@ if uploaded_files:
 
             except Exception as e:
                 erros.append(f"❌ Erro ao converter {pdf.name}: {str(e)}")
-                traceback.print_exc()  # Mostra no log do Streamlit Cloud
+                traceback.print_exc()
 
             finally:
-                # Limpa arquivos temporários (se existirem)
                 if os.path.exists(input_pdf):
                     os.remove(input_pdf)
                 if os.path.exists(output_docx):
                     os.remove(output_docx)
 
-        # Mostra resultados
+        # Exibir resultados
         if resultados:
             st.success("Conversão concluída!")
             for nome_base, buffer in resultados:
