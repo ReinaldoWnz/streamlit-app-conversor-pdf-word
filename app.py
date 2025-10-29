@@ -1,29 +1,29 @@
 import streamlit as st
-from pdf2docx import Converter
+import fitz  # PyMuPDF
+from docx import Document
 from io import BytesIO
 
-st.title("Conversor PDF para Word 📄➡️📝 (com formatação)")
+st.title("Conversor PDF ➡️ Word (modo compatível)")
 
 uploaded_file = st.file_uploader("Envie seu PDF", type="pdf")
 
 if uploaded_file is not None:
-    if st.button("Converter para Word"):
-        # Salvar temporariamente
-        input_pdf = "temp.pdf"
-        with open(input_pdf, "wb") as f:
-            f.write(uploaded_file.read())
+    if st.button("Converter"):
+        pdf_bytes = uploaded_file.read()
+        pdf_stream = BytesIO(pdf_bytes)
+        doc = Document()
 
-        # Converter com pdf2docx
-        output_docx = "convertido.docx"
-        cv = Converter(input_pdf)
-        cv.convert(output_docx, start=0, end=None)  # full document
-        cv.close()
+        pdf = fitz.open(stream=pdf_stream, filetype="pdf")
+        for page in pdf:
+            text = page.get_text("text")
+            doc.add_paragraph(text)
+            doc.add_page_break()
 
-        # Ler em memória
-        with open(output_docx, "rb") as f:
-            buffer = BytesIO(f.read())
+        buffer = BytesIO()
+        doc.save(buffer)
+        buffer.seek(0)
 
-        st.success("Conversão concluída com formatação mantida!")
+        st.success("Conversão concluída com compatibilidade total no Cloud!")
         st.download_button(
             label="Baixar Word",
             data=buffer,
