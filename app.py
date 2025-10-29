@@ -1,58 +1,32 @@
 import streamlit as st
-import fitz  # PyMuPDF
-from docx import Document
-from docx.shared import Inches
+from pdf2docx import Converter
 from io import BytesIO
-from tempfile import NamedTemporaryFile
-import os
 
-st.title("Conversor PDF ➜ Word 📄➡️📝 (layout 100% preservado)")
+st.title("Conversor PDF para Word 📄➡️📝 (com formatação)")
 
-uploaded_files = st.file_uploader("Envie um ou vários PDFs", type="pdf", accept_multiple_files=True)
+uploaded_file = st.file_uploader("Envie seu PDF", type="pdf")
 
-if uploaded_files:
-    if st.button("Converter todos para Word"):
-        resultados = []
+if uploaded_file is not None:
+    if st.button("Converter para Word"):
+        # Salvar temporariamente
+        input_pdf = "temp.pdf"
+        with open(input_pdf, "wb") as f:
+            f.write(uploaded_file.read())
 
-        for arquivo in uploaded_files:
-            nome_base = os.path.splitext(arquivo.name)[0]
-            input_pdf = f"{nome_base}.pdf"
-            output_docx = f"{nome_base}.docx"
+        # Converter com pdf2docx
+        output_docx = "convertido.docx"
+        cv = Converter(input_pdf)
+        cv.convert(output_docx, start=0, end=None)  # full document
+        cv.close()
 
-            # Salvar PDF temporariamente
-            with open(input_pdf, "wb") as f:
-                f.write(arquivo.read())
+        # Ler em memória
+        with open(output_docx, "rb") as f:
+            buffer = BytesIO(f.read())
 
-            # Converter com PyMuPDF (gera imagem por página)
-            doc = Document()
-            pdf = fitz.open(input_pdf)
-
-            for i, page in enumerate(pdf):
-                pix = page.get_pixmap(dpi=200)  # alta qualidade
-                img_temp = NamedTemporaryFile(delete=False, suffix=".png")
-                pix.save(img_temp.name)
-
-                doc.add_picture(img_temp.name, width=Inches(6.5))
-                if i < len(pdf) - 1:
-                    doc.add_page_break()
-
-                os.remove(img_temp.name)
-
-            pdf.close()
-            doc.save(output_docx)
-
-            with open(output_docx, "rb") as f:
-                buffer = BytesIO(f.read())
-
-            resultados.append((nome_base, buffer))
-            os.remove(input_pdf)
-            os.remove(output_docx)
-
-        st.success("Conversão concluída com layout preservado!")
-        for nome_base, buffer in resultados:
-            st.download_button(
-                label=f"📥 Baixar {nome_base}.docx",
-                data=buffer,
-                file_name=f"{nome_base}.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            )
+        st.success("Conversão concluída com formatação mantida!")
+        st.download_button(
+            label="Baixar Word",
+            data=buffer,
+            file_name="convertido.docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
