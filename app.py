@@ -9,8 +9,9 @@ st.title("📊 Conversor de Relatórios (Precisão Total)")
 st.markdown("Este app reconstrói registros fragmentados por tags `` e quebras de linha.")
 def limpar_e_processar(texto_bruto):
     texto = texto_bruto.replace('`', '')
+    texto = re.sub(r'às\s*\n\s*(\d{1,2}:\d{2})', r'às \1', texto)
 
-    padrao_data = r'(\d{1,2}\s+de\s+\w+\s+de\s+\d{4}\s+às[\s\xa0]*\d{1,2}:\d{2})'
+    padrao_data = r'(\d{1,2}\s+de\s+\w+\s+de\s+\d{4}\s+às\s+\d{1,2}:\d{2})'
     partes = re.split(padrao_data, texto)
 
     if partes and not partes[0].strip():
