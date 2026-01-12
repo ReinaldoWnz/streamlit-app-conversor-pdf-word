@@ -45,6 +45,8 @@ def limpar_e_processar(texto_bruto):
 
     return pd.DataFrame(registros)
 
+    datas_encontradas = re.findall(padrao_data, conteudo)
+    st.info(f"🔎 Datas encontradas no texto: {len(datas_encontradas)}")
 
 # Interface Streamlit
 arquivo = st.file_uploader("Suba seu arquivo report.txt", type=['txt', 'csv'])
@@ -76,7 +78,4 @@ if arquivo:
             
     except Exception as e:
         st.error(f"Ocorreu um erro: {e}")
-
-    datas_encontradas = re.findall(padrao_data, conteudo)
-    st.info(f"🔎 Datas encontradas no texto: {len(datas_encontradas)}")
 
