@@ -77,6 +77,6 @@ if arquivo:
     except Exception as e:
         st.error(f"Ocorreu um erro: {e}")
 
-datas_encontradas = re.findall(padrao_data, conteudo)
-st.info(f"🔎 Datas encontradas no texto: {len(datas_encontradas)}")
+    datas_encontradas = re.findall(padrao_data, conteudo)
+    st.info(f"🔎 Datas encontradas no texto: {len(datas_encontradas)}")
 
