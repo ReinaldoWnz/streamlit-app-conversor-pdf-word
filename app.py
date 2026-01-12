@@ -11,7 +11,7 @@ st.markdown("Este app reconstrói registros fragmentados por tags `` e quebras d
 def limpar_e_processar(texto_bruto):
     # 1. Remove as tags que aparecem no meio do texto
     # Corrigido o erro da barra invertida aqui
-    texto = re.sub(r'\', '', texto_bruto)
+    texto = re.sub(r'\', texto_bruto)
     
     # 2. Une datas que foram quebradas em várias linhas
     # Isso procura por "dia de [quebra de linha] mês" e remove a quebra
